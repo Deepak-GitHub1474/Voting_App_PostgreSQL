@@ -1,28 +1,36 @@
 const express = require("express");
-const { 
-        userRegister, 
-        userLogin, 
-        userActionController, 
-        userLogout, userVoting, 
-        getAllVotingList, 
-        getAllUserList,
-        getVotingStatus,
-        liveVotingResult,
-        votingRestart
-    } = require("../controllers/controllers")
-const { registerValidation, loginValidation, verifyUser } = require("../middlewares/middlewares");
+const { ok } = require("../utils/respond");
+const {
+    userRegister,
+    userLogin,
+    userActionController,
+    userLogout,
+    userVoting,
+    getMyVote,
+    getVotingStatus,
+    getResults,
+    getAdminSummary,
+    liveVotingResult,
+    votingRestart,
+} = require("../controllers/controllers");
+const { registerValidation, loginValidation, verifyUser, optionalUser, requireAdmin } = require("../middlewares/middlewares");
 
 const route = express.Router();
 
-route.get("/", verifyUser, userActionController)
-route.post("/register", registerValidation, userRegister)
-route.post("/login", loginValidation, userLogin)
-route.get("/logout", userLogout)
-route.post("/voting", userVoting)
-route.get("/voting/list", getAllVotingList)
-route.get("/user/list", getAllUserList)
-route.get("/voting/status", getVotingStatus)
-route.patch("/voting/result/live", liveVotingResult)
-route.patch("/voting/restart", votingRestart)
+route.get("/health", (req, res) => ok(res, "OK", { status: "up" }));
 
-module.exports = route
+route.get("/", optionalUser, userActionController);
+route.post("/register", registerValidation, userRegister);
+route.post("/login", loginValidation, userLogin);
+route.get("/logout", userLogout);
+
+route.get("/voting/status", getVotingStatus);
+route.get("/voting/results", getResults);
+route.get("/voting/me", verifyUser, getMyVote);
+route.post("/voting", verifyUser, userVoting);
+
+route.get("/admin/summary", verifyUser, requireAdmin, getAdminSummary);
+route.patch("/voting/result/live", verifyUser, requireAdmin, liveVotingResult);
+route.patch("/voting/restart", verifyUser, requireAdmin, votingRestart);
+
+module.exports = route;
