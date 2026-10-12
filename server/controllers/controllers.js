@@ -1,243 +1,157 @@
+const store = require("../db/store");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const  connectToDb  = require('../config/db');
+const { ok, fail } = require("../utils/respond");
 
-// User dashboard access control
+const CANDIDATES = ["Candidate-1", "Candidate-2", "Candidate-3", "Candidate-4"];
+
+const cookieOptions = () => ({
+    httpOnly: true,
+    sameSite: process.env.CORS_SAME_SITE,
+    secure: true,
+    path: "/",
+});
+
+const tally = async () => {
+    const stored = await store.countVotesByCandidate();
+    const counts = Object.fromEntries(CANDIDATES.map((name) => [name, stored[name] || 0]));
+    const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+    const top = Math.max(...Object.values(counts));
+    const leaders = top > 0 ? CANDIDATES.filter((name) => counts[name] === top) : [];
+    return {
+        total,
+        candidates: CANDIDATES.map((name) => ({ name, votes: counts[name] })),
+        winner: leaders.join(" and "),
+    };
+};
+
+const startSession = (res, user) => {
+    const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: "1d" });
+    res.cookie("token", token, { ...cookieOptions(), maxAge: 24 * 60 * 60 * 1000 });
+    return { name: user.name, email: user.email, isAdmin: user.isAdmin, isVoted: user.isVoted };
+};
+
 exports.userActionController = async (req, res) => {
-    
     try {
-        const { email } = req;
-
-        const client = await connectToDb();
-
-        const query = 'SELECT email, name, isadmin, isvoted FROM users WHERE email = $1';
-        const result = await client.query(query, [email]);
-
-        if (result.rows.length === 0) {
-            res.status(404).json({ responseMsg: "User not found" });
-            return;
-        }
-
-        const userData = result.rows[0];
-        res.status(200).json(userData);
-
-        await client.end();
+        if (!req.email) return ok(res, "Not signed in", null);
+        const user = await store.findPublicUser(req.email);
+        return ok(res, user ? "Signed in" : "Not signed in", user || null);
     } catch (error) {
-        console.error("Error while fetching user details:", error);
-        res.status(500).json({ responseMsg: "Error while fetching user details" });
+        return fail(res, 500, "Could not load your account");
     }
 };
 
-// Register
 exports.userRegister = async (req, res) => {
-    
     try {
-        const { name, email, password, phone } = req.body;
-        const client = await connectToDb();
+        const name = req.body.name.trim();
+        const email = req.body.email.trim();
+        const phone = req.body.phone.trim();
 
-        const existingUser = 'SELECT * FROM users WHERE email = $1';
-        const user = await client.query(existingUser, [email]);
-
-        if (user.rows.length > 0) {
-            res.status(400).json({ responseMsg: "Email already exists" });
-        } else {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const insertUser = 'INSERT INTO users (name, email, password, phone) VALUES ($1, $2, $3, $4) RETURNING *';
-            const insertUserResult = await client.query(insertUser, [name, email, hashedPassword, phone]);
-            const newUser = insertUserResult.rows[0];
-
-            res.status(200).json({ responseMsg: "Successfully registered", user: newUser });
+        if (await store.userExists(email)) {
+            return fail(res, 409, "An account with this email already exists");
         }
-
-        await client.end();
+        const passwordHash = await bcrypt.hash(req.body.password, 10);
+        const user = await store.createUser({ name, email, passwordHash, phone });
+        return ok(res, "Account created", startSession(res, user), 201);
     } catch (error) {
-        console.error("Error while registering user:", error);
-        res.status(500).json({ responseMsg: "Error while registering user" });
+        if (store.isDuplicateError(error)) return fail(res, 409, "An account with this email already exists");
+        return fail(res, 500, "Could not create the account, please try again");
     }
 };
 
-// Login
 exports.userLogin = async (req, res) => {
-    
     try {
-        const { email, password } = req.body;
-        const client = await connectToDb();
-
-        const query = 'SELECT * FROM users WHERE email = $1';
-        const result = await client.query(query, [email]);
-
-        if (result.rows.length === 0) {
-            res.status(404).json({ responseMsg: "No Account associated with this email" });
-            return;
-        }
-
-        const user = result.rows[0];
-
-        bcrypt.compare(password, user.password, (err, response) => {
-            if (response) {
-                const token = jwt.sign(
-                    {
-                        email: user.email,
-                        name: user.name,
-                        isadmin: user.isadmin,
-                        isvoted: user.isvoted
-                    },
-                    process.env.JWT_SECRET, { expiresIn: "1d" });
-
-                res.cookie("token", token, {
-                    httpOnly: true,
-                    sameSite: process.env.CORS_SAME_SITE,
-                    secure: true,
-                    path: '/'
-                });
-
-                res.status(200).json({ responseMsg: "Success", user: user });
-            } else {
-                res.status(401).json({ responseMsg: "Wrong Password" });
-            }
-        });
-
-        await client.end();
+        const email = req.body.email.trim();
+        const user = await store.findUserWithPassword(email);
+        if (!user) return fail(res, 404, "No account is associated with this email");
+        const valid = await bcrypt.compare(req.body.password, user.password);
+        if (!valid) return fail(res, 401, "Incorrect password");
+        return ok(res, "Signed in", startSession(res, user));
     } catch (error) {
-        console.error("Error while logging in:", error);
-        res.status(500).json({ responseMsg: "Error while logging in" });
+        return fail(res, 500, "Could not sign you in, please try again");
     }
 };
 
-// User Logout
 exports.userLogout = (req, res) => {
-
-    res.cookie("token", "", {
-        expires: new Date(0),
-        httpOnly: true,
-        sameSite: process.env.CORS_SAME_SITE,
-        secure: true,
-        path: '/'
-    });
-    return res.status(200).json({ responseMsg: "Success" });
+    res.cookie("token", "", { ...cookieOptions(), expires: new Date(0) });
+    return ok(res, "Signed out");
 };
 
-// Get All User List
-exports.getAllUserList = async (req, res) => {
-    try {
-        const client = await connectToDb();
-
-        const query = 'SELECT * FROM users';
-        const result = await client.query(query);
-        const userList = result.rows;
-        res.status(200).json({ responseMsg: "Fetched all user list", userList: userList });
-        await client.end();
-
-    } catch (error) {
-        console.error("Error while accessing user list:", error);
-        res.status(500).json({ responseMsg: "Error while accessing user list" });
-    }
-};
-
-// User Voting
 exports.userVoting = async (req, res) => {
-    
     try {
-        const { user_email, candidate } = req.body;
-        const client = await connectToDb();
-
-        const checkExistingVoter = 'SELECT * FROM votings WHERE user_email = $1';
-        const result = await client.query(checkExistingVoter, [user_email]);
-
-        if (result.rows.length > 0) {
-            res.status(200).json({ responseMsg: "You already voted" });
-        } else {
-
-            const insertVoting = 'INSERT INTO votings (user_email, candidate) VALUES ($1, $2) RETURNING *';
-            const insertVotingResult = await client.query(insertVoting, [user_email, candidate]);
-
-            // Update user's voting status
-            const updateUser = 'UPDATE users SET isvoted = true WHERE email = $1';
-            await client.query(updateUser, [user_email]);
-
-            res.status(200).json({ responseMsg: "Successfully voted", votingInfo: insertVotingResult.rows[0] });
-        }
-
-        await client.end();
+        const { candidate } = req.body || {};
+        if (!CANDIDATES.includes(candidate)) return fail(res, 400, "Please choose a valid candidate");
+        const control = await store.getControl();
+        if (!control.isVotingOn) return fail(res, 403, "Voting is closed");
+        const user = await store.findPublicUser(req.email);
+        if (!user) return fail(res, 401, "Account not found");
+        if (user.isAdmin) return fail(res, 403, "Admins cannot vote");
+        if (await store.findVote(req.email)) return fail(res, 409, "You have already voted");
+        await store.recordVote(req.email, candidate);
+        return ok(res, "Your vote has been recorded", { candidate }, 201);
     } catch (error) {
-        console.error("Error while voting:", error);
-        res.status(500).json({ responseMsg: "Error while voting" });
+        if (store.isDuplicateError(error)) return fail(res, 409, "You have already voted");
+        return fail(res, 500, "Could not record your vote, please try again");
     }
 };
 
-// Get Voting Status
+exports.getMyVote = async (req, res) => {
+    try {
+        const candidate = await store.findVote(req.email);
+        return ok(res, candidate ? "Vote found" : "No vote yet", { candidate });
+    } catch (error) {
+        return fail(res, 500, "Could not load your vote");
+    }
+};
+
+const publicControl = (control) => ({
+    isVotingOn: Boolean(control.isVotingOn),
+    isVotingResultLive: Boolean(control.isVotingResultLive),
+    winnerCandidate: control.winnerCandidate || "",
+});
+
 exports.getVotingStatus = async (req, res) => {
     try {
-        const client = await connectToDb();
-
-        const query = 'SELECT * FROM voting_controls';
-        const result = await client.query(query);
-        const votingStatus = result.rows;
-
-        res.status(200).json({ responseMsg: "Fetched voting status", votingStatus });
-
-        await client.end();
+        return ok(res, "Voting status", publicControl(await store.getControl()));
     } catch (error) {
-        console.error("Error while fetching voting status:", error);
-        res.status(500).json({ responseMsg: "Error while fetching voting status" });
+        return fail(res, 500, "Could not load the voting status");
     }
 };
 
-// Get All Voting List
-exports.getAllVotingList = async (req, res) => {
+exports.getResults = async (req, res) => {
     try {
-        const client = await connectToDb();
-
-        const query = 'SELECT * FROM votings';
-        const result = await client.query(query);
-
-        const votingList = result.rows;
-        res.status(200).json({ responseMsg: "Fetched all voting list", votingList });
-
-        await client.end();
+        const control = await store.getControl();
+        if (!control.isVotingResultLive) return ok(res, "Results are not published yet", { published: false });
+        return ok(res, "Results", { published: true, ...(await tally()) });
     } catch (error) {
-        console.error("Error while accessing voting list:", error);
-        res.status(500).json({ responseMsg: "Error while accessing voting list" });
+        return fail(res, 500, "Could not load results");
     }
 };
 
-// Live Voting Result
+exports.getAdminSummary = async (req, res) => {
+    try {
+        const [results, voters] = await Promise.all([tally(), store.countVoters()]);
+        return ok(res, "Summary", { ...results, voters });
+    } catch (error) {
+        return fail(res, 500, "Could not load the summary");
+    }
+};
+
 exports.liveVotingResult = async (req, res) => {
-
     try {
-        const { is_voting_result_live, is_voting_on, winner_candidate } = req.body;
-
-        const client = await connectToDb();
-
-        const query = 'UPDATE voting_controls SET is_voting_result_live = $1, is_voting_on = $2, winner_candidate = $3';
-        const values = [is_voting_result_live, is_voting_on, winner_candidate];
-        const result = await client.query(query, values);
-
-        res.status(200).json({ responseMsg: "Voting status updated successfully", votingResult: result.rows });
-
-        await client.end();
+        const { winner } = await tally();
+        const control = await store.updateControl({ isVotingResultLive: true, isVotingOn: false, winnerCandidate: winner });
+        return ok(res, "Results published", publicControl(control));
     } catch (error) {
-        console.error("Error while updating voting status:", error);
-        res.status(500).json({ responseMsg: "Error while updating voting status" });
+        return fail(res, 500, "Could not publish the results");
     }
 };
 
-// Voting Restart
 exports.votingRestart = async (req, res) => {
     try {
-        const { is_voting_result_live, is_voting_on, winner_candidate } = req.body;
-
-        const client = await connectToDb();
-
-        const query = 'UPDATE voting_controls SET is_voting_result_live = $1, is_voting_on = $2, winner_candidate = $3';
-        const values = [is_voting_result_live, is_voting_on, winner_candidate];
-        const result = await client.query(query, values);
-
-        res.status(200).json({ responseMsg: "Voting status updated successfully", votingResult: result.rows });
-
-        await client.end();
+        const control = await store.updateControl({ isVotingResultLive: false, isVotingOn: true, winnerCandidate: "" });
+        return ok(res, "Voting reopened", publicControl(control));
     } catch (error) {
-        console.error("Error while updating voting status:", error);
-        res.status(500).json({ responseMsg: "Error while updating voting status" });
+        return fail(res, 500, "Could not reopen voting");
     }
 };
