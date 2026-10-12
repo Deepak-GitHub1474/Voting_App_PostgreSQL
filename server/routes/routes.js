@@ -1,5 +1,5 @@
 const express = require("express");
-const { ok } = require("../utils/respond");
+const { ok, fail } = require("../utils/respond");
 const {
     userRegister,
     userLogin,
@@ -22,6 +22,9 @@ route.get("/health", (req, res) => ok(res, "OK", { status: "up" }));
 route.get("/", optionalUser, userActionController);
 route.post("/register", registerValidation, userRegister);
 route.post("/login", loginValidation, userLogin);
+const requireJson = (req, res, next) => (req.is("application/json") ? next() : fail(res, 415, "Expected a JSON request"));
+
+route.post("/logout", requireJson, userLogout);
 route.get("/logout", userLogout);
 
 route.get("/voting/status", getVotingStatus);

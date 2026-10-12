@@ -107,7 +107,7 @@ export async function registerAction({ request }) {
 
 export async function logoutAction() {
   try {
-    await api("/logout");
+    await api("/logout", { method: "POST", body: {} });
     toast.success("Logged out");
   } catch {
     toast.error("Could not log out, please try again");
