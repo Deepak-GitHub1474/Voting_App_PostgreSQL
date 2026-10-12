@@ -25,7 +25,6 @@ route.post("/login", loginValidation, userLogin);
 const requireJson = (req, res, next) => (req.is("application/json") ? next() : fail(res, 415, "Expected a JSON request"));
 
 route.post("/logout", requireJson, userLogout);
-route.get("/logout", userLogout);
 
 route.get("/voting/status", getVotingStatus);
 route.get("/voting/results", getResults);
