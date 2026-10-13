@@ -44,7 +44,7 @@ exports.userActionController = async (req, res) => {
 exports.userRegister = async (req, res) => {
     try {
         const name = req.body.name.trim();
-        const email = req.body.email.trim();
+        const email = req.body.email.trim().toLowerCase();
         const phone = req.body.phone.trim();
 
         if (await store.userExists(email)) {
@@ -61,7 +61,7 @@ exports.userRegister = async (req, res) => {
 
 exports.userLogin = async (req, res) => {
     try {
-        const email = req.body.email.trim();
+        const email = req.body.email.trim().toLowerCase();
         const user = await store.findUserWithPassword(email);
         if (!user) return fail(res, 404, "No account is associated with this email");
         const valid = await bcrypt.compare(req.body.password, user.password);
