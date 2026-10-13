@@ -58,11 +58,9 @@ function StatusCard({ election, results }) {
 
   return (
     <div className="lg:pl-6">
-      <div className="flex items-center gap-3">
-        <Badge tone={election.isVotingOn ? "success" : live ? "brand" : "warn"} dot>
-          {status}
-        </Badge>
-      </div>
+      <Badge tone={election.isVotingOn ? "success" : live ? "brand" : "warn"} dot>
+        {status}
+      </Badge>
 
       {live ? (
         <>
@@ -103,7 +101,7 @@ export default function Landing() {
     <div className="relative flex flex-col gap-20">
       <div className="pointer-events-none absolute bg-[radial-gradient(40rem_22rem_at_12%_0%,rgb(47_154_107/0.14),transparent_70%),radial-gradient(34rem_20rem_at_92%_18%,rgb(79_180_135/0.12),transparent_70%)] inset-x-[-50vw] -top-24 -z-10 h-[34rem]" aria-hidden="true" />
 
-      <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_1fr]">
+      <section className="grid items-start gap-12 lg:grid-cols-[1.05fr_1fr]">
         <div>
           <Badge tone="brand" dot>
             Secure online elections
@@ -121,8 +119,8 @@ export default function Landing() {
                 <Link
                   to={action.to}
                   className={cx(
-                    "group inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full bg-brand-600 px-3 text-sm font-semibold text-white transition hover:bg-brand-700 active:scale-[0.98] sm:w-44 sm:px-5",
-                    user && "col-span-2 sm:w-auto"
+                    "group inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full bg-brand-600 px-3 text-sm font-semibold text-white transition hover:bg-brand-700 active:scale-[0.98] sm:w-44 sm:px-5 lg:h-12 lg:w-48 lg:px-6 lg:text-base",
+                    user && "col-span-2 sm:w-auto lg:w-auto"
                   )}
                 >
                   {action.label}
@@ -131,7 +129,7 @@ export default function Landing() {
                   </svg>
                 </Link>
                 {!user && (
-                  <Link to="/login" className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border border-line bg-surface px-3 text-sm font-semibold text-ink transition hover:border-brand-400 hover:text-brand-700 active:scale-[0.98] sm:w-44 sm:px-5">
+                  <Link to="/login" className="inline-flex h-11 min-w-0 items-center justify-center rounded-full border border-line bg-surface px-3 text-sm font-semibold text-ink transition hover:border-brand-400 hover:text-brand-700 active:scale-[0.98] sm:w-44 sm:px-5 lg:h-12 lg:w-48 lg:px-6 lg:text-base">
                     Login
                   </Link>
                 )}

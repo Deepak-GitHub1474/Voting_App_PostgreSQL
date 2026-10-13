@@ -6,10 +6,15 @@ import { Spinner } from "../ui/index.jsx";
 
 export default function ProfileMenu({ user, initials, links, leaving, onLogout }) {
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const root = useRef(null);
   const { pathname } = useLocation();
 
   useEffect(() => setOpen(false), [pathname]);
+
+  useEffect(() => {
+    if (!open) setConfirming(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,13 +75,38 @@ export default function ProfileMenu({ user, initials, links, leaving, onLogout }
           <p className="px-3 pb-2 pt-1 text-xs text-ink-muted">{user.isAdmin ? "Administrator" : "Voter"}</p>
           <button
             type="button"
-            onClick={onLogout}
-            disabled={leaving}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-danger-600 transition-colors hover:bg-danger-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => setConfirming(true)}
+            aria-expanded={confirming}
+            className={cx("flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-danger-600 transition-colors hover:bg-danger-50", confirming && "bg-danger-50")}
           >
-            {leaving && <Spinner />}
             Logout
           </button>
+          <div className={cx("grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none", confirming ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+            <div className="overflow-hidden" inert={confirming ? undefined : ""}>
+              <div className="px-3 pb-1 pt-3">
+                <p className="text-sm text-ink">Log out of Ballot?</p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(false)}
+                    disabled={leaving}
+                    className="inline-flex h-9 items-center justify-center rounded-full border border-line text-sm font-semibold text-ink transition-colors hover:bg-canvas disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    disabled={leaving}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-danger-600 text-sm font-semibold text-white transition-colors hover:bg-danger-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {leaving && <Spinner />}
+                    Log out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
