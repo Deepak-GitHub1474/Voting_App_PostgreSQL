@@ -20,9 +20,9 @@ const STEPS = [
 ];
 
 const STATS = [
-  { value: "1", label: "vote per account" },
-  { value: "0", label: "totals shown early" },
-  { value: "100%", label: "server-side counting" },
+  { value: "1", label: "vote each" },
+  { value: "0", label: "early peeks" },
+  { value: "100%", label: "server tally" },
 ];
 
 function Icon({ d, className = "size-5" }) {
@@ -142,7 +142,7 @@ export default function Landing() {
               <div key={stat.label}>
                 <dt className="sr-only">{stat.label}</dt>
                 <dd className="text-2xl font-semibold tracking-tight text-ink">{stat.value}</dd>
-                <dd className="mt-0.5 text-xs leading-snug text-ink-muted">{stat.label}</dd>
+                <dd className="mt-0.5 whitespace-nowrap text-xs text-ink-muted">{stat.label}</dd>
               </div>
             ))}
           </dl>
@@ -150,26 +150,28 @@ export default function Landing() {
         <StatusCard election={election} results={results} />
       </section>
 
-      <section>
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">How it works</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight">Three steps, start to result</h2>
-        <ol className="mt-8 grid gap-4 sm:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <li key={step.title}>
-              <Card interactive className="group h-full p-7">
-                <div className="flex items-center justify-between">
-                  <span className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
-                    <Icon d={ICONS[step.icon]} />
-                  </span>
-                  <span className="text-sm font-semibold tabular-nums text-ink-muted/60">0{index + 1}</span>
-                </div>
-                <h3 className="mt-6 text-lg font-semibold text-ink">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-ink-muted">{step.body}</p>
-              </Card>
-            </li>
-          ))}
-        </ol>
-      </section>
+      {!user && election?.isVotingOn && (
+        <section>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-600">How it works</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">Three steps, start to result</h2>
+          <ol className="mt-8 grid gap-4 sm:grid-cols-3">
+            {STEPS.map((step, index) => (
+              <li key={step.title}>
+                <Card interactive className="group h-full p-7">
+                  <div className="flex items-center justify-between">
+                    <span className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
+                      <Icon d={ICONS[step.icon]} />
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-ink-muted/60">0{index + 1}</span>
+                  </div>
+                  <h3 className="mt-6 text-lg font-semibold text-ink">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink-muted">{step.body}</p>
+                </Card>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </div>
   );
 }
