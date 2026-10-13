@@ -97,8 +97,8 @@ exports.userVoting = async (req, res) => {
 
 exports.getMyVote = async (req, res) => {
     try {
-        const candidate = await store.findVote(req.email);
-        return ok(res, candidate ? "Vote found" : "No vote yet", { candidate });
+        const vote = await store.findVote(req.email);
+        return ok(res, vote ? "Vote found" : "No vote yet", { candidate: vote?.candidate || null, votedAt: vote?.votedAt || null });
     } catch (error) {
         return fail(res, 500, "Could not load your vote");
     }

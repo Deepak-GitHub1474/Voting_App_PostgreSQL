@@ -120,7 +120,7 @@ export default function Landing() {
                   to={action.to}
                   className={cx(
                     "group inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-full bg-brand-600 px-3 text-sm font-semibold text-white transition hover:bg-brand-700 active:scale-[0.98] sm:w-44 sm:px-5 lg:h-12 lg:w-48 lg:px-6 lg:text-base",
-                    user && "col-span-2 sm:w-auto lg:w-auto"
+                    user && "col-span-2"
                   )}
                 >
                   {action.label}

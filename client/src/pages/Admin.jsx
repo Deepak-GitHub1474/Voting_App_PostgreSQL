@@ -76,7 +76,7 @@ export default function Admin() {
           </div>
         </section>
 
-        <section className="flex flex-col self-start rounded-3xl bg-brand-50/70 p-6">
+        <section className="flex flex-col self-start rounded-3xl bg-brand-50/70 p-4">
           <h2 className="text-lg font-semibold">Round controls</h2>
           <p className="mt-1.5 text-sm text-ink-muted">Voters see changes immediately.</p>
 

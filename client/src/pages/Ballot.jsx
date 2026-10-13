@@ -6,34 +6,75 @@ import { CANDIDATES, candidateName } from "../lib/candidates.js";
 import { cx } from "../lib/cx.js";
 import { useRoot } from "../lib/use-root.js";
 
-function Receipt({ candidate }) {
+const STATUS = {
+  open: { label: "Poll open", tone: "success" },
+  published: { label: "Results published", tone: "brand" },
+  closed: { label: "Poll closed", tone: "warn" },
+};
+
+const formatTime = (value) => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+
+function Receipt({ candidate, votedAt, election, name }) {
   const meta = CANDIDATES.find((item) => item.id === candidate);
+  const status = election?.isVotingResultLive ? STATUS.published : election?.isVotingOn ? STATUS.open : STATUS.closed;
+
   return (
-    <div className="mx-auto max-w-lg py-6 text-center">
-      <span className="mx-auto grid size-16 place-items-center rounded-full bg-success-50 text-success-600">
-        <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-          <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-      <h2 className="mt-6 text-2xl font-semibold tracking-tight">Your vote is recorded</h2>
-      <p className="mt-2 text-sm text-ink-muted">Votes are final and counted once. Thank you for taking part.</p>
-      <div className="mx-auto mt-8 flex w-fit items-center gap-3 rounded-full bg-brand-50 py-2 pl-2 pr-6">
-        {meta && <span className={cx("grid size-10 place-items-center rounded-full text-xs font-bold", meta.tone)}>{meta.initials}</span>}
-        <div className="text-left">
-          <p className="text-xs text-ink-muted">You voted for</p>
-          <p className="font-semibold text-ink">{candidateName(candidate)}</p>
+    <section className="mx-auto w-full max-w-md rounded-3xl border border-line bg-surface p-4">
+      <div className="flex items-center gap-4">
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-success-50 text-success-600">
+          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <path d="M5 12l5 5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">Vote recorded</h1>
+          <p className="text-sm text-ink-muted">Thanks for taking part{name ? `, ${name}` : ""}.</p>
         </div>
       </div>
-      <Link to="/" className="mt-6 inline-flex h-11 items-center rounded-full border border-line px-5 text-sm font-semibold text-ink hover:bg-canvas">
-        Back to Overview
-      </Link>
-    </div>
+
+      <dl className="mt-6 divide-y divide-line border-y border-dashed border-line text-sm">
+        <div className="flex items-center justify-between gap-4 py-4">
+          <dt className="text-ink-muted">Candidate</dt>
+          <dd className="flex items-center gap-2 font-semibold text-ink">
+            {meta && <span className={cx("grid size-7 place-items-center rounded-full text-[0.625rem] font-bold", meta.tone)}>{meta.initials}</span>}
+            {candidateName(candidate)}
+          </dd>
+        </div>
+        {votedAt && (
+          <div className="flex items-center justify-between gap-4 py-4">
+            <dt className="text-ink-muted">Cast on</dt>
+            <dd className="text-right font-medium text-ink">{formatTime(votedAt)}</dd>
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-4 py-4">
+          <dt className="text-ink-muted">Status</dt>
+          <dd>
+            <Badge tone={status.tone} dot>
+              {status.label}
+            </Badge>
+          </dd>
+        </div>
+      </dl>
+
+      {election?.isVotingResultLive ? (
+        <Link to="/" className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700">
+          See results
+        </Link>
+      ) : (
+        <>
+          <p className="mt-6 text-sm leading-relaxed text-ink-muted">Votes are final and counted once. Results appear on the Overview as soon as they are published.</p>
+          <Link to="/" className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-full border border-line text-sm font-semibold text-ink hover:bg-canvas">
+            Back to Overview
+          </Link>
+        </>
+      )}
+    </section>
   );
 }
 
 export default function Ballot() {
-  const { candidate: myVote } = useLoaderData();
-  const { election } = useRoot();
+  const { candidate: myVote, votedAt } = useLoaderData();
+  const { user, election } = useRoot();
   const vote = useFetcher();
   const [choice, setChoice] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -43,18 +84,17 @@ export default function Ballot() {
 
   const submit = () => vote.submit({ candidate: choice }, { method: "post" });
 
+  if (myVote) return <Receipt candidate={myVote} votedAt={votedAt} election={election} name={user?.name.split(" ")[0]} />;
+
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        eyebrow="Ballot"
-        title={myVote ? "Thanks for voting" : "Choose your candidate"}
-        description={myVote ? undefined : "Select one candidate. You can review your choice before it's submitted, and it can't be changed afterwards."}
+        title="Choose your candidate"
+        description="Select one candidate. You can review your choice before it's submitted, and it can't be changed afterwards."
         actions={election && (election.isVotingOn ? <Badge tone="success" dot>Poll open</Badge> : <Badge tone="warn" dot>Poll closed</Badge>)}
       />
 
-      {myVote ? (
-        <Receipt candidate={myVote} />
-      ) : !election?.isVotingOn ? (
+      {!election?.isVotingOn ? (
         <div className="mx-auto max-w-lg py-6 text-center">
           <h2 className="text-2xl font-semibold tracking-tight">Voting is closed</h2>
           <p className="mt-2 text-sm text-ink-muted">This round ended before you voted. The admin can reopen voting for a new round.</p>
@@ -73,7 +113,7 @@ export default function Ballot() {
                 <label
                   key={candidate.id}
                   className={cx(
-                    "flex cursor-pointer items-center gap-4 rounded-3xl border bg-surface p-5 transition duration-300 hover:-translate-y-0.5",
+                    "flex cursor-pointer items-center gap-4 rounded-3xl border bg-surface p-4 transition duration-300 hover:-translate-y-0.5",
                     selected ? "border-brand-500 bg-brand-50/60 ring-4 ring-brand-500/10" : "border-line hover:border-brand-400/60",
                     submitting && "cursor-not-allowed opacity-70"
                   )}
@@ -109,7 +149,7 @@ export default function Ballot() {
             })}
           </fieldset>
 
-          <div className="flex flex-col gap-4 rounded-3xl bg-brand-50/70 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 rounded-3xl bg-brand-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-ink-muted">
               {!choice
                 ? "Select a candidate to continue."
@@ -117,7 +157,7 @@ export default function Ballot() {
                   ? <>Confirm your vote for <span className="font-semibold text-ink">{candidateName(choice)}</span>. This can&apos;t be undone.</>
                   : <>You selected <span className="font-semibold text-ink">{candidateName(choice)}</span>.</>}
             </p>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:flex">
               {confirming ? (
                 <>
                   <Button variant="secondary" onClick={() => setConfirming(false)} disabled={submitting}>
@@ -128,7 +168,7 @@ export default function Ballot() {
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setConfirming(true)} disabled={!choice}>
+                <Button className="col-span-2" onClick={() => setConfirming(true)} disabled={!choice}>
                   Review vote
                 </Button>
               )}

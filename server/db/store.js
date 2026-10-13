@@ -37,7 +37,7 @@ exports.updateControl = async (changes) => {
     return one(`UPDATE voting_controls SET ${assignments} RETURNING ${CONTROL}`, keys.map((key) => changes[key]));
 };
 
-exports.findVote = async (email) => (await one("SELECT candidate FROM votings WHERE user_email = $1", [email]))?.candidate || null;
+exports.findVote = (email) => one(`SELECT candidate, created_at AS "votedAt" FROM votings WHERE user_email = $1`, [email]);
 
 exports.recordVote = async (email, candidate) => {
     const client = await pool.connect();
