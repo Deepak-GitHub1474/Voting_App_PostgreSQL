@@ -14,9 +14,9 @@ const one = async (sql, params) => (await pool.query(sql, params)).rows[0] || nu
 
 exports.findPublicUser = (email) => one(`SELECT ${PUBLIC_USER} FROM users WHERE email = $1`, [email]);
 
-exports.findUserWithPassword = (email) => one(`SELECT ${PUBLIC_USER}, password FROM users WHERE email = $1`, [email]);
+exports.findUserWithPassword = (email) => one(`SELECT ${PUBLIC_USER}, password FROM users WHERE LOWER(email) = LOWER($1)`, [email]);
 
-exports.userExists = async (email) => Boolean(await one("SELECT 1 FROM users WHERE email = $1", [email]));
+exports.userExists = async (email) => Boolean(await one("SELECT 1 FROM users WHERE LOWER(email) = LOWER($1)", [email]));
 
 exports.isAdmin = async (email) => Boolean((await one("SELECT isadmin FROM users WHERE email = $1", [email]))?.isadmin);
 
