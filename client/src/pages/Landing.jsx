@@ -157,7 +157,7 @@ export default function Landing() {
           <ol className="mt-8 grid gap-4 sm:grid-cols-3">
             {STEPS.map((step, index) => (
               <li key={step.title}>
-                <Card interactive className="group h-full p-7">
+                <Card interactive className="group h-full p-4">
                   <div className="flex items-center justify-between">
                     <span className="grid size-11 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition-colors duration-300 group-hover:bg-brand-600 group-hover:text-white">
                       <Icon d={ICONS[step.icon]} />

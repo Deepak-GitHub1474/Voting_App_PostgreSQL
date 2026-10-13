@@ -9,8 +9,8 @@ import { useRoot } from "../lib/use-root.js";
 function Stat({ label, value }) {
   return (
     <div>
-      <p className="text-4xl font-semibold tabular-nums tracking-tight text-ink">{value}</p>
-      <p className="mt-1 text-sm text-ink-muted">{label}</p>
+      <p className="text-2xl font-semibold tabular-nums tracking-tight text-ink sm:text-4xl">{value}</p>
+      <p className="mt-1 whitespace-nowrap text-xs text-ink-muted sm:text-sm">{label}</p>
     </div>
   );
 }
@@ -60,8 +60,8 @@ export default function Admin() {
 
 
       <div className="grid grid-cols-3 gap-4 sm:max-w-2xl">
-        <Stat label="Votes cast" value={summary.total} />
-        <Stat label="Registered voters" value={summary.voters} />
+        <Stat label="Votes" value={summary.total} />
+        <Stat label="Voters" value={summary.voters} />
         <Stat label="Turnout" value={`${turnout}%`} />
       </div>
 

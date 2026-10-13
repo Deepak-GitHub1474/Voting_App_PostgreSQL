@@ -1,11 +1,15 @@
 import { useEffect, useRef, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { cx } from "../../lib/cx.js";
 import { Spinner } from "../ui/index.jsx";
 
-export default function ProfileMenu({ user, initials, leaving, onLogout }) {
+export default function ProfileMenu({ user, initials, links, leaving, onLogout }) {
   const [open, setOpen] = useState(false);
   const root = useRef(null);
+  const { pathname } = useLocation();
+
+  useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +54,18 @@ export default function ProfileMenu({ user, initials, leaving, onLogout }) {
             <p className="truncate text-xs text-ink-muted">{user.email}</p>
           </div>
         </div>
+        <nav className="flex flex-col gap-0.5 border-b border-line p-2 sm:hidden" aria-label="Main">
+          {links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => cx("rounded-xl px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-brand-50 text-brand-700" : "text-ink-soft hover:bg-canvas hover:text-ink")}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
         <div className="p-2">
           <p className="px-3 pb-2 pt-1 text-xs text-ink-muted">{user.isAdmin ? "Administrator" : "Voter"}</p>
           <button
